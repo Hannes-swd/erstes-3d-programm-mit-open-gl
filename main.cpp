@@ -4,6 +4,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
+#include "input.h"
+GLFWwindow* window;
 
 // -------------------------------------------------------
 // SHADER QUELLCODE
@@ -93,12 +95,21 @@ unsigned int indices[] = {
 };
 
 int main() {
+    //variablöen
+
+    float kammerapositionX = 0;
+    float kammerapositionY = 0;
+    float kammerapositionZ = 3.0f;
+    float targetX = 0.0f;
+    float targetY = 0.0f;
+    
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(800, 600, "3D Würfel", nullptr, nullptr);
+    window = glfwCreateWindow(800, 600, "3D Würfel", nullptr, nullptr);
+
     glfwMakeContextCurrent(window);
     gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
@@ -135,6 +146,18 @@ int main() {
     glUseProgram(shaderProgram);
 
     while (!glfwWindowShouldClose(window)) {
+
+
+
+        if (IsKeyDown(Key_W)) { kammerapositionY += 0.001f; targetY += 0.001f; }
+        if (IsKeyDown(Key_S)) { kammerapositionY -= 0.001f; targetY -= 0.001f; }
+        if (IsKeyDown(Key_A)) { kammerapositionX -= 0.001f; targetX -= 0.001f; }
+        if (IsKeyDown(Key_D)) { kammerapositionX += 0.001f; targetX += 0.001f; }
+        if (IsKeyDown(Key_Q)) kammerapositionZ += 0.001f;
+        if (IsKeyDown(Key_E)) kammerapositionZ -= 0.001f;
+
+
+
         // WICHTIG: Beide Buffer leeren (Farbe + Tiefe)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -147,9 +170,9 @@ int main() {
 
         // --- View Matrix: Kamera 3 Einheiten zurück ---
         glm::mat4 view = glm::lookAt(
-            glm::vec3(0.0f, 0.0f, 3.0f),  // Kamera-Position
-            glm::vec3(0.0f, 0.0f, 0.0f),  // Schaut auf Ursprung
-            glm::vec3(0.0f, 1.0f, 0.0f)   // "Oben" ist Y-Achse
+            glm::vec3(kammerapositionX, kammerapositionY, kammerapositionZ),
+            glm::vec3(targetX, targetY, 0.0f),
+            glm::vec3(0.0f, 1.0f, 0.0f)
         );
 
         // --- Projection Matrix: Perspektive ---

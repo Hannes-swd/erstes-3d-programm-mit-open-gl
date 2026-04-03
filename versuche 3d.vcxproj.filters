@@ -21,5 +21,13 @@
     <ClCompile Include="include\glad\src\glad.c">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="input.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="input.h">
+      <Filter>Quelldateien</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
