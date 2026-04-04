@@ -4,59 +4,51 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 #include "input.h"
 GLFWwindow* window;
 
-// -------------------------------------------------------
-// SHADER QUELLCODE
-// -------------------------------------------------------
-
-// Vertex Shader: läuft für jeden Eckpunkt
-// Berechnet die finale Position mit Model/View/Projection
 const char* vertexShaderSrc = R"(
 #version 330 core
-layout (location = 0) in vec3 aPos;   // Position des Vertex
-layout (location = 1) in vec3 aColor; // Farbe des Vertex
+layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec2 aTexCoord;
 
-out vec3 vertexColor; // wird an Fragment Shader weitergegeben
+out vec2 TexCoord;
 
-uniform mat4 model;      // Objekt-Transformation
-uniform mat4 view;       // Kamera
-uniform mat4 projection; // Perspektive
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
 
 void main() {
     gl_Position = projection * view * model * vec4(aPos, 1.0);
-    vertexColor = aColor;
+    TexCoord = aTexCoord;
 }
 )";
 
-// Fragment Shader: läuft für jeden Pixel
-// Bestimmt die finale Farbe
 const char* fragmentShaderSrc = R"(
 #version 330 core
-in vec3 vertexColor;
+in vec2 TexCoord;
 out vec4 FragColor;
 
+uniform sampler2D myTexture;
+
 void main() {
-    FragColor = vec4(vertexColor, 1.0);
+    FragColor = texture(myTexture, TexCoord);
 }
 )";
 
-// -------------------------------------------------------
-// SHADER KOMPILIEREN & LINKEN
-// -------------------------------------------------------
 unsigned int createShaderProgram() {
-    // Vertex Shader kompilieren
     unsigned int vertShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertShader, 1, &vertexShaderSrc, nullptr);
     glCompileShader(vertShader);
 
-    // Fragment Shader kompilieren
     unsigned int fragShader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragShader, 1, &fragmentShaderSrc, nullptr);
     glCompileShader(fragShader);
 
-    // Beide zu einem Programm linken
     unsigned int program = glCreateProgram();
     glAttachShader(program, vertShader);
     glAttachShader(program, fragShader);
@@ -68,58 +60,102 @@ unsigned int createShaderProgram() {
 }
 
 // -------------------------------------------------------
-// WÜRFEL DATEN
-// 8 Ecken, jede mit Position (xyz) + Farbe (rgb)
+// 24 Vertices: jede Seite hat 4 eigene Ecken mit UV 0..1
+// Format: X, Y, Z,   U, V
 // -------------------------------------------------------
 float vertices[] = {
-    //   X      Y      Z       R     G     B
-        -0.5f, -0.5f, -0.5f,  1.0f, 0.0f, 0.0f, // 0 hinten-unten-links  (rot)
-         0.5f, -0.5f, -0.5f,  0.0f, 1.0f, 0.0f, // 1 hinten-unten-rechts (grün)
-         0.5f,  0.5f, -0.5f,  0.0f, 0.0f, 1.0f, // 2 hinten-oben-rechts  (blau)
-        -0.5f,  0.5f, -0.5f,  1.0f, 1.0f, 0.0f, // 3 hinten-oben-links   (gelb)
-        -0.5f, -0.5f,  0.5f,  1.0f, 0.0f, 1.0f, // 4 vorne-unten-links   (lila)
-         0.5f, -0.5f,  0.5f,  0.0f, 1.0f, 1.0f, // 5 vorne-unten-rechts  (cyan)
-         0.5f,  0.5f,  0.5f,  1.0f, 1.0f, 1.0f, // 6 vorne-oben-rechts   (weiß)
-        -0.5f,  0.5f,  0.5f,  0.5f, 0.5f, 0.5f, // 7 vorne-oben-links    (grau)
+    // Hinten
+    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+     0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+
+    // Vorne
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
+
+    // Links
+    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+    -0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+    -0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+
+    // Rechts
+     0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+     0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+
+     // Unten
+     -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+      0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
+      0.5f, -0.5f,  0.5f,  1.0f, 1.0f,
+     -0.5f, -0.5f,  0.5f,  0.0f, 1.0f,
+
+     // Oben
+     -0.5f,  0.5f, -0.5f,  0.0f, 0.0f,
+      0.5f,  0.5f, -0.5f,  1.0f, 0.0f,
+      0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+     -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
 };
 
-// Index-Buffer: welche 3 Ecken bilden ein Dreieck?
-// Ein Würfel = 6 Seiten × 2 Dreiecke = 12 Dreiecke
+// Jede Seite = 2 Dreiecke, Vertex-Offset jeweils +4
 unsigned int indices[] = {
-    0,1,2, 2,3,0, // hinten
-    4,5,6, 6,7,4, // vorne
-    0,4,7, 7,3,0, // links
-    1,5,6, 6,2,1, // rechts
-    3,2,6, 6,7,3, // oben
-    0,1,5, 5,4,0, // unten
+     0,  1,  2,   2,  3,  0,  // Hinten
+     4,  5,  6,   6,  7,  4,  // Vorne
+     8,  9, 10,  10, 11,  8,  // Links
+    12, 13, 14,  14, 15, 12,  // Rechts
+    16, 17, 18,  18, 19, 16,  // Unten
+    20, 21, 22,  22, 23, 20,  // Oben
 };
 
 int main() {
-    //variablöen
-
     float kammerapositionX = 0;
     float kammerapositionY = 0;
     float kammerapositionZ = 3.0f;
     float targetX = 0.0f;
     float targetY = 0.0f;
-    
+
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    window = glfwCreateWindow(800, 600, "3D Würfel", nullptr, nullptr);
-
+    window = glfwCreateWindow(800, 600, "3D Wuerfel", nullptr, nullptr);
     glfwMakeContextCurrent(window);
     gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
-    // Tiefentest aktivieren – wichtig für 3D!
-    // Ohne das werden hintere Flächen VOR vorderen gezeichnet
     glEnable(GL_DEPTH_TEST);
 
     unsigned int shaderProgram = createShaderProgram();
 
-    // VAO, VBO, EBO erstellen
+    // Textur laden
+    unsigned int texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    int width, height, channels;
+    stbi_set_flip_vertically_on_load(true);
+    unsigned char* data = stbi_load("stein.png", &width, &height, &channels, 0);
+
+    if (data) {
+        GLenum format = (channels == 4) ? GL_RGBA : GL_RGB;
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+        std::cout << "stein.png geladen! (" << width << "x" << height << ")" << std::endl;
+    }
+    else {
+        std::cout << "FEHLER: stein.png nicht gefunden!" << std::endl;
+    }
+    stbi_image_free(data);
+
     unsigned int VAO, VBO, EBO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
@@ -127,27 +163,23 @@ int main() {
 
     glBindVertexArray(VAO);
 
-    // Vertex-Daten hochladen
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-    // Index-Daten hochladen
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    // Layout: Attribut 0 = Position (3 floats)
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    // Attribut 0: Position (3 floats), Stride = 5 floats
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    // Layout: Attribut 1 = Farbe (3 floats, nach den ersten 3)
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    // Attribut 1: UV (2 floats), nach den ersten 3
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
     glUseProgram(shaderProgram);
 
     while (!glfwWindowShouldClose(window)) {
-
-
 
         if (IsKeyDown(Key_W)) { kammerapositionY += 0.001f; targetY += 0.001f; }
         if (IsKeyDown(Key_S)) { kammerapositionY -= 0.001f; targetY -= 0.001f; }
@@ -156,39 +188,31 @@ int main() {
         if (IsKeyDown(Key_Q)) kammerapositionZ += 0.001f;
         if (IsKeyDown(Key_E)) kammerapositionZ -= 0.001f;
 
-
-
-        // WICHTIG: Beide Buffer leeren (Farbe + Tiefe)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 
-        // --- Model Matrix: Würfel rotieren ---
-        // glfwGetTime() gibt Sekunden seit Start zurück
-        float angle = (float)glfwGetTime() * 50.0f; // 50 Grad pro Sekunde
-        glm::mat4 model = glm::mat4(1.0f); // Einheitsmatrix als Start
+        float angle = (float)glfwGetTime() * 50.0f;
+        glm::mat4 model = glm::mat4(1.0f);
         model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 1.0f, 0.0f));
 
-        // --- View Matrix: Kamera 3 Einheiten zurück ---
         glm::mat4 view = glm::lookAt(
             glm::vec3(kammerapositionX, kammerapositionY, kammerapositionZ),
             glm::vec3(targetX, targetY, 0.0f),
             glm::vec3(0.0f, 1.0f, 0.0f)
         );
 
-        // --- Projection Matrix: Perspektive ---
         glm::mat4 projection = glm::perspective(
-            glm::radians(45.0f), // Field of View
-            800.0f / 600.0f,     // Seitenverhältnis
-            0.1f,                // Near-Plane
-            100.0f               // Far-Plane
+            glm::radians(45.0f),
+            800.0f / 600.0f,
+            0.1f,
+            100.0f
         );
 
-        // Matrizen an Shader übergeben
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(model));
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
-        // Zeichnen mit Index-Buffer
+        glBindTexture(GL_TEXTURE_2D, texture);
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
 
