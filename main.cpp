@@ -59,10 +59,6 @@ unsigned int createShaderProgram() {
     return program;
 }
 
-// -------------------------------------------------------
-// 24 Vertices: jede Seite hat 4 eigene Ecken mit UV 0..1
-// Format: X, Y, Z,   U, V
-// -------------------------------------------------------
 float vertices[] = {
     // Hinten
     -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
@@ -101,14 +97,14 @@ float vertices[] = {
      -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
 };
 
-// Jede Seite = 2 Dreiecke, Vertex-Offset jeweils +4
+// FIX: symmetrische Indizes, beide Dreiecke laufen gleich rum
 unsigned int indices[] = {
-     0,  1,  2,   2,  3,  0,  // Hinten
-     4,  5,  6,   6,  7,  4,  // Vorne
-     8,  9, 10,  10, 11,  8,  // Links
-    12, 13, 14,  14, 15, 12,  // Rechts
-    16, 17, 18,  18, 19, 16,  // Unten
-    20, 21, 22,  22, 23, 20,  // Oben
+     0,  1,  2,   0,  2,  3,  // Hinten
+     4,  5,  6,   4,  6,  7,  // Vorne
+     8,  9, 10,   8, 10, 11,  // Links
+    12, 13, 14,  12, 14, 15,  // Rechts
+    16, 17, 18,  16, 18, 19,  // Unten
+    20, 21, 22,  20, 22, 23,  // Oben
 };
 
 int main() {
@@ -138,7 +134,7 @@ int main() {
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     int width, height, channels;
@@ -169,11 +165,9 @@ int main() {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    // Attribut 0: Position (3 floats), Stride = 5 floats
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    // Attribut 1: UV (2 floats), nach den ersten 3
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
@@ -188,8 +182,8 @@ int main() {
         if (IsKeyDown(Key_Q)) kammerapositionZ += 0.001f;
         if (IsKeyDown(Key_E)) kammerapositionZ -= 0.001f;
 
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         float angle = (float)glfwGetTime() * 50.0f;
         glm::mat4 model = glm::mat4(1.0f);
@@ -201,9 +195,12 @@ int main() {
             glm::vec3(0.0f, 1.0f, 0.0f)
         );
 
+        // FIX: echtes Seitenverhältnis vom Framebuffer verwenden
+        int fbWidth, fbHeight;
+        glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
         glm::mat4 projection = glm::perspective(
             glm::radians(45.0f),
-            800.0f / 600.0f,
+            (float)fbWidth / (float)fbHeight,
             0.1f,
             100.0f
         );
