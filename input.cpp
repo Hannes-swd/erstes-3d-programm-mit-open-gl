@@ -39,6 +39,12 @@ bool IsKeyDown(Tasten taste) {
     case Key_X: return glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS;
     case Key_Y: return glfwGetKey(window, GLFW_KEY_Y) == GLFW_PRESS;
     case Key_Z: return glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS;
+
+    case Key_Up:    return glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS;
+    case Key_Down:  return glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS;
+    case Key_Left:  return glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS;
+    case Key_Right: return glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS;
+
     case egal:  return glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS;
 
     default:

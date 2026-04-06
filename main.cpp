@@ -97,7 +97,6 @@ float vertices[] = {
      -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
 };
 
-// FIX: symmetrische Indizes, beide Dreiecke laufen gleich rum
 unsigned int indices[] = {
      0,  1,  2,   0,  2,  3,  // Hinten
      4,  5,  6,   4,  6,  7,  // Vorne
@@ -108,6 +107,12 @@ unsigned int indices[] = {
 };
 
 int main() {
+    // Würfel-Rotation
+    float rotationX = 0.0f;
+    float rotationY = 0.0f;
+    float rotationSpeed = 0.01f;
+
+    // Kamera-Position
     float kammerapositionX = 0;
     float kammerapositionY = 0;
     float kammerapositionZ = 3.0f;
@@ -175,6 +180,7 @@ int main() {
 
     while (!glfwWindowShouldClose(window)) {
 
+        // ===== KAMERA-STEUERUNG mit WASD und QE =====
         if (IsKeyDown(Key_W)) { kammerapositionY += 0.001f; targetY += 0.001f; }
         if (IsKeyDown(Key_S)) { kammerapositionY -= 0.001f; targetY -= 0.001f; }
         if (IsKeyDown(Key_A)) { kammerapositionX -= 0.001f; targetX -= 0.001f; }
@@ -182,20 +188,28 @@ int main() {
         if (IsKeyDown(Key_Q)) kammerapositionZ += 0.001f;
         if (IsKeyDown(Key_E)) kammerapositionZ -= 0.001f;
 
+        // ===== WÜRFEL-DREHUNG mit PFEILTASTEN =====
+        if (IsKeyDown(Key_Up))    rotationX -= rotationSpeed;
+        if (IsKeyDown(Key_Down))  rotationX += rotationSpeed;
+        if (IsKeyDown(Key_Left))  rotationY -= rotationSpeed;
+        if (IsKeyDown(Key_Right)) rotationY += rotationSpeed;
+
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        float angle = (float)glfwGetTime() * 50.0f;
+        // Model-Matrix mit Würfel-Rotation
         glm::mat4 model = glm::mat4(1.0f);
-        model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 1.0f, 0.0f));
+        model = glm::rotate(model, glm::radians(rotationX), glm::vec3(1.0f, 0.0f, 0.0f));
+        model = glm::rotate(model, glm::radians(rotationY), glm::vec3(0.0f, 1.0f, 0.0f));
 
+        // View-Matrix mit Kamera-Position
         glm::mat4 view = glm::lookAt(
             glm::vec3(kammerapositionX, kammerapositionY, kammerapositionZ),
             glm::vec3(targetX, targetY, 0.0f),
             glm::vec3(0.0f, 1.0f, 0.0f)
         );
 
-        // FIX: echtes Seitenverhältnis vom Framebuffer verwenden
+        // Projektions-Matrix
         int fbWidth, fbHeight;
         glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
         glm::mat4 projection = glm::perspective(
